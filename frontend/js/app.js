@@ -235,13 +235,14 @@ function displayInventoryByFolder() {
         inUseContainer.innerHTML = inUseHTML;
     }
     
-    // ===== RESERVE STOCK INVENTORY (Independent) =====
+    // ===== RESERVE STOCK INVENTORY (VIEW-ONLY) =====
+    // Show only products that have available reserve stock and remove checkout controls
     const extraContainer = document.getElementById('inventory-extra');
-    const extraProducts = allProducts; // Show ALL products in this inventory
-    
+    const extraProducts = allProducts.filter(p => (p.quantity_in_stock || 0) > 0);
+
     let extraHTML = '';
     if (extraProducts.length === 0) {
-        extraHTML = '<p class="text-muted">No items</p>';
+        extraHTML = '<p class="text-muted">No items in reserve stock</p>';
     } else {
         // Group by category
         const extraCategoryMap = {};
@@ -252,7 +253,7 @@ function displayInventoryByFolder() {
             }
             extraCategoryMap[category].push(product);
         });
-        
+
         extraHTML = '<div class="inventory-categories">';
         Object.keys(extraCategoryMap).sort().forEach((category, index) => {
             const categoryId = `extra-category-${category.replace(/\s+/g, '-').toLowerCase()}`;
@@ -265,34 +266,27 @@ function displayInventoryByFolder() {
                     </div>
                     <div id="${categoryId}" class="category-items" style="display: ${index === 0 ? 'grid' : 'none'}; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
             `;
-            
+
             extraCategoryMap[category].forEach(product => {
                 const stockQty = product.quantity_in_stock || 0;
-                const isOutOfStock = stockQty === 0;
-                const disabledAttr = isOutOfStock ? 'disabled' : '';
-                const dimmedStyle = isOutOfStock ? 'opacity: 0.5;' : '';
-                
+
                 extraHTML += `
-                    <div style="padding: 15px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: #fff; ${dimmedStyle}">
-                        <input type="checkbox" class="checkout-checkbox" value="${product.product_id}" data-name="${product.product_name}" data-category="${product.category}" data-source="reserve_stock" data-available="${stockQty}" data-max-quantity="${stockQty}" ${disabledAttr}>
-                        <label style="margin-left: 8px; font-weight: 500; cursor: ${isOutOfStock ? 'default' : 'pointer'};">
-                            ${product.product_name}
-                        </label>
-                        <div style="margin-top: 10px; font-size: 13px; color: #6b7280;">
+                    <div style="padding: 15px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: #fff;">
+                        <div style="font-weight: 600; margin-bottom: 6px;">${product.product_name}</div>
+                        <div style="margin-top: 6px; font-size: 13px; color: #6b7280;">
                             <div>📁 Reserve Stock: ${stockQty}</div>
-                            <div style="color: ${isOutOfStock ? '#dc2626' : '#059669'}; font-weight: ${isOutOfStock ? 'bold' : 'normal'};">${isOutOfStock ? '⚠️ Stock: 0' : '✓ In Stock: ' + stockQty}</div>
+                            <div style="color: #059669; font-weight: normal;">✓ In Stock: ${stockQty}</div>
                             <div>Location: ${product.location || 'N/A'}</div>
                         </div>
-                        <input type="number" min="1" value="1" max="${stockQty}" class="checkout-quantity" data-product-id="${product.product_id}" style="width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 4px;" ${disabledAttr}>
                     </div>
                 `;
             });
-            
+
             extraHTML += '</div></div>';
         });
         extraHTML += '</div>';
     }
-    
+
     if (extraContainer) {
         extraContainer.innerHTML = extraHTML;
     }
