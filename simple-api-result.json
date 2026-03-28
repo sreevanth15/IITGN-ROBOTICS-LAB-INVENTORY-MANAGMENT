@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "steps": [
+    {
+      "create": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Product added successfully",
+          "product_id": 33
+        }
+      }
+    },
+    {
+      "issue1": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "1 item(s) issued successfully",
+          "issued_items": [
+            {
+              "issue_id": 103,
+              "product_id": 33,
+              "quantity": 2,
+              "source": "reserve_stock"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "report1": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": [
+            {
+              "product_id": 30,
+              "product_name": "motor",
+              "category": "Electronics",
+              "quantity_in_use": 3,
+              "quantity_in_stock": 2,
+              "quantity_total": 5
+            },
+            {
+              "product_id": 33,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 2,
+              "quantity_in_stock": 3,
+              "quantity_total": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "issue2": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "1 item(s) issued successfully",
+          "issued_items": [
+            {
+              "issue_id": 104,
+              "product_id": 33,
+              "quantity": 1,
+              "source": "in_circulation"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ret": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Item returned successfully",
+          "return_id": 87
+        }
+      }
+    },
+    {
+      "del": 200
+    }
+  ]
+}

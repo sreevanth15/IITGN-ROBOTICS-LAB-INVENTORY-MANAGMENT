@@ -1,0 +1,104 @@
+{
+  "create": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Product added successfully",
+      "product_id": 8
+    }
+  },
+  "productId": 8,
+  "checkout1": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "1 item(s) issued successfully",
+      "issued_items": [
+        {
+          "issue_id": 40,
+          "product_id": 8,
+          "quantity": 2,
+          "source": "reserve_stock"
+        }
+      ]
+    }
+  },
+  "report1": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": [
+        {
+          "product_id": 8,
+          "product_name": "E2E Test Item",
+          "category": "Tools",
+          "quantity_in_use": 4,
+          "quantity_in_stock": 3,
+          "quantity_total": 7
+        }
+      ]
+    }
+  },
+  "checkout2": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "1 item(s) issued successfully",
+      "issued_items": [
+        {
+          "issue_id": 41,
+          "product_id": 8,
+          "quantity": 1,
+          "source": "in_circulation"
+        }
+      ]
+    }
+  },
+  "report2": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": [
+        {
+          "product_id": 8,
+          "product_name": "E2E Test Item",
+          "category": "Tools",
+          "quantity_in_use": 3,
+          "quantity_in_stock": 4,
+          "quantity_total": 7
+        }
+      ]
+    }
+  },
+  "return1": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Item returned successfully",
+      "return_id": 34
+    }
+  },
+  "finalReport": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": [
+        {
+          "product_id": 8,
+          "product_name": "E2E Test Item",
+          "category": "Tools",
+          "quantity_in_use": 1,
+          "quantity_in_stock": 6,
+          "quantity_total": 7
+        }
+      ]
+    }
+  },
+  "delete": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Product deleted successfully"
+    }
+  }
+}

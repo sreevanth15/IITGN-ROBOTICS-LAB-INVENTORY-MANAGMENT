@@ -1,0 +1,128 @@
+{
+  "create": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Product added successfully",
+      "product_id": 10
+    }
+  },
+  "productId": 10,
+  "checkout1": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "1 item(s) issued successfully",
+      "issued_items": [
+        {
+          "issue_id": 45,
+          "product_id": 10,
+          "quantity": 2,
+          "source": "reserve_stock"
+        }
+      ]
+    }
+  },
+  "report1": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": [
+        {
+          "product_id": 9,
+          "product_name": "motor",
+          "category": "Electronics",
+          "quantity_in_use": 1,
+          "quantity_in_stock": 4,
+          "quantity_total": 5
+        },
+        {
+          "product_id": 10,
+          "product_name": "E2E Test Item",
+          "category": "Tools",
+          "quantity_in_use": 4,
+          "quantity_in_stock": 3,
+          "quantity_total": 7
+        }
+      ]
+    }
+  },
+  "checkout2": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "1 item(s) issued successfully",
+      "issued_items": [
+        {
+          "issue_id": 46,
+          "product_id": 10,
+          "quantity": 1,
+          "source": "in_circulation"
+        }
+      ]
+    }
+  },
+  "report2": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": [
+        {
+          "product_id": 9,
+          "product_name": "motor",
+          "category": "Electronics",
+          "quantity_in_use": 1,
+          "quantity_in_stock": 4,
+          "quantity_total": 5
+        },
+        {
+          "product_id": 10,
+          "product_name": "E2E Test Item",
+          "category": "Tools",
+          "quantity_in_use": 3,
+          "quantity_in_stock": 4,
+          "quantity_total": 7
+        }
+      ]
+    }
+  },
+  "return1": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Item returned successfully",
+      "return_id": 37
+    }
+  },
+  "finalReport": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "data": [
+        {
+          "product_id": 9,
+          "product_name": "motor",
+          "category": "Electronics",
+          "quantity_in_use": 1,
+          "quantity_in_stock": 4,
+          "quantity_total": 5
+        },
+        {
+          "product_id": 10,
+          "product_name": "E2E Test Item",
+          "category": "Tools",
+          "quantity_in_use": 1,
+          "quantity_in_stock": 6,
+          "quantity_total": 7
+        }
+      ]
+    }
+  },
+  "delete": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Product deleted successfully"
+    }
+  }
+}

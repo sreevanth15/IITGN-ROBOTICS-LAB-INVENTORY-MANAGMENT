@@ -1,0 +1,152 @@
+{
+  "ok": true,
+  "steps": [
+    {
+      "create": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Product added successfully",
+          "product_id": 22
+        }
+      }
+    },
+    {
+      "issue1": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "1 item(s) issued successfully",
+          "issued_items": [
+            {
+              "issue_id": 69,
+              "product_id": 22,
+              "quantity": 2,
+              "source": "reserve_stock"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "report1": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": [
+            {
+              "product_id": 9,
+              "product_name": "motor",
+              "category": "Electronics",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 4,
+              "quantity_total": 5
+            },
+            {
+              "product_id": 13,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 3,
+              "quantity_total": 4
+            },
+            {
+              "product_id": 14,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 3,
+              "quantity_total": 4
+            },
+            {
+              "product_id": 15,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 5,
+              "quantity_total": 6
+            },
+            {
+              "product_id": 16,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 5,
+              "quantity_total": 6
+            },
+            {
+              "product_id": 17,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 5,
+              "quantity_total": 6
+            },
+            {
+              "product_id": 18,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 5,
+              "quantity_total": 6
+            },
+            {
+              "product_id": 19,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 5,
+              "quantity_total": 6
+            },
+            {
+              "product_id": 20,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 1,
+              "quantity_in_stock": 5,
+              "quantity_total": 6
+            },
+            {
+              "product_id": 22,
+              "product_name": "SimpleTest",
+              "category": "Tools",
+              "quantity_in_use": 2,
+              "quantity_in_stock": 3,
+              "quantity_total": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "issue2": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "1 item(s) issued successfully",
+          "issued_items": [
+            {
+              "issue_id": 70,
+              "product_id": 22,
+              "quantity": 1,
+              "source": "in_circulation"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ret": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Item returned successfully",
+          "return_id": 47
+        }
+      }
+    },
+    {
+      "del": 200
+    }
+  ]
+}

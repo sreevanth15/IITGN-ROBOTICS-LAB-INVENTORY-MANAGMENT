@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - IITGN Robotics Lab Inventory</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🤖 Inventory</h2>
+                <p class="lab-name">IITGN Robotics Lab</p>
+            </div>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-section="inventory-list">
+                            📦 Inventory List
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-section="pending-returns">
+                            📥 Returns
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-section="add-product">
+                            ➕ Add Product
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-section="report">
+                            📊 Report
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-section="config">
+                            ⚙️ Config
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1 class="header-title">Inventory Management System</h1>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="name">-</div>
+                        <div class="role">-</div>
+                    </div>
+                    <button class="btn-logout">Logout</button>
+                </div>
+            </header>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Messages -->
+                <div class="error-message"></div>
+                <div class="success-message"></div>
+                
+                <!-- ===== INVENTORY LIST SECTION ===== -->
+                <section id="inventory-list" class="section">
+                    <div class="page-header">
+                        <h1>📦 Inventory List</h1>
+                        <p>Select items from folders and checkout directly</p>
+                    </div>
+                    
+                    <!-- In Circulation Folder -->
+                    <div class="card">
+                        <div class="card-title">📂 In Circulation</div>
+                        <p class="card-subtitle">Items currently in circulation</p>
+                        <div id="inventory-in-use" style="padding: 20px;">
+                            <div class="loading active"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reserve Stock Folder -->
+                    <div class="card">
+                        <div class="card-title">📂 Reserve Stock</div>
+                        <p class="card-subtitle">Items available in reserve</p>
+                        <div id="inventory-extra" style="padding: 20px;">
+                            <div class="loading active"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Checkout Section (appears when items are selected) -->
+                    <div id="checkout-section" class="card" style="display: none; border-left: 4px solid #10b981; background-color: #f0fdf4;">
+                        <div class="card-title">✓ Checkout Selected Items</div>
+                        
+                        <form id="checkout-form">
+                            <!-- Profile Selection -->
+                            <div class="form-row">
+                                <div class="form-group full-width">
+                                    <label for="checkout-profile">Select Profile (Auto-fill Details) *</label>
+                                    <select id="checkout-profile" style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                        <option value="">-- Select a Profile --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Auto-filled User Information -->
+                            <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="checkout-user-name">Name</label>
+                                        <input type="text" id="checkout-user-name" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="checkout-user-email">Email</label>
+                                        <input type="email" id="checkout-user-email" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="checkout-user-phone">Phone</label>
+                                        <input type="text" id="checkout-user-phone" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="checkout-user-position">Position</label>
+                                        <input type="text" id="checkout-user-position" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Selected Items Summary -->
+                            <div class="form-group full-width">
+                                <label><strong>Selected Items</strong></label>
+                                <div id="checkout-items-list" class="selected-items">
+                                    <p class="text-muted">No items selected</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Additional Info -->
+                            <div class="form-group full-width">
+                                <label for="checkout-purpose">Purpose (Optional)</label>
+                                <textarea id="checkout-purpose" placeholder="What will these items be used for?" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                            </div>
+                            
+                            <!-- Auto-recorded Info -->
+                            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 13px;">
+                                <strong>Auto-recorded:</strong><br>
+                                Date: <span id="checkout-auto-date"></span><br>
+                                Time: <span id="checkout-auto-time"></span>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div style="display: flex; gap: 10px;">
+                                <button type="submit" class="btn btn-success" style="flex: 1; padding: 12px;">
+                                    ✓ Checkout Items
+                                </button>
+                                <button type="button" onclick="clearCheckoutSelection()" class="btn btn-secondary" style="flex: 1; padding: 12px;">
+                                    Clear Selection
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+                
+                <!-- Issue Items - Removed (Integrated into Inventory List) -->
+                
+                <!-- ===== RETURNS SECTION ===== -->
+                <section id="pending-returns" class="section">
+                    <div class="page-header">
+                        <h1>📥 Return Items</h1>
+                        <p>Process returns for items that were checked out</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title">Pending Checkouts - Process Returns</div>
+                        <div class="table-responsive" id="pending-issues-list">
+                            <div class="loading active"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- ===== ADD PRODUCT SECTION ===== -->
+                <section id="add-product" class="section">
+                    <div class="page-header">
+                        <h1>➕ Add New Product</h1>
+                        <p>Add new items to the inventory. Product ID is auto-generated.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title">New Product Form</div>
+                        
+                        <form id="add-product-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-product-name">Product Name *</label>
+                                    <input type="text" id="new-product-name" required placeholder="e.g., Motor DC 12V">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-product-category">Category *</label>
+                                    <select id="new-product-category" required style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                        <option value="">-- Loading Categories --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-product-location">Location/Storage</label>
+                                    <input type="text" id="new-product-location" placeholder="e.g., Shelf A-1, Cabinet 3">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-product-quantity">Quantity *</label>
+                                    <input type="number" id="new-product-quantity" min="1" required value="1" placeholder="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-product-location-type">Store In *</label>
+                                    <select id="new-product-location-type" required style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                        <option value="">-- Select Location --</option>
+                                        <option value="stock">📂 Reserve Stock</option>
+                                        <option value="use">📂 In Circulation</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label for="new-product-description">Description (Optional)</label>
+                                <textarea id="new-product-description" placeholder="Add any additional details..." style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;">
+                                ✓ Add Product
+                            </button>
+                        </form>
+                    </div>
+                </section>
+                
+                <!-- ===== REPORT SECTION ===== -->
+                <section id="report" class="section">
+                    <div class="page-header">
+                        <h1>📊 Inventory Report</h1>
+                        <p>Complete inventory status and statistics</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title">Full Inventory Report</div>
+                        <div class="table-responsive" id="inventory-report">
+                            <div class="loading active"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Activity Report</div>
+                        <div class="table-responsive" id="activity-report">
+                            <div class="loading active"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- ===== CONFIG SECTION ===== -->
+                <section id="config" class="section">
+                    <div class="page-header">
+                        <h1>⚙️ Configuration</h1>
+                        <p>Manage profiles and categories</p>
+                    </div>
+                    
+                    <!-- Profiles Tab -->
+                    <div class="config-tabs">
+                        <button class="config-tab-btn active" data-tab="profiles-tab">👤 Profiles</button>
+                        <button class="config-tab-btn" data-tab="categories-tab">📋 Categories</button>
+                        <button class="config-tab-btn" data-tab="products-tab">📦 Products</button>
+                    </div>
+                    
+                    <!-- Profiles Section -->
+                    <div id="profiles-tab" class="config-tab-content active">
+                        <div class="card">
+                            <div class="card-title">Add New Profile</div>
+                            
+                            <form id="add-profile-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="profile-name">Name *</label>
+                                        <input type="text" id="profile-name" required placeholder="Full name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="profile-email">Email *</label>
+                                        <input type="email" id="profile-email" required placeholder="Email address">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="profile-phone">Phone Number</label>
+                                        <input type="tel" id="profile-phone" placeholder="Phone number">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="profile-position">Position</label>
+                                        <input type="text" id="profile-position" placeholder="e.g., Team Lead">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label for="profile-working-under">Working Under *</label>
+                                    <select id="profile-working-under" required style="width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                        <option value="">-- Select --</option>
+                                        <option value="MV">MV</option>
+                                        <option value="HPM">HPM</option>
+                                    </select>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;">
+                                    ✓ Add Profile
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-title">Existing Profiles</div>
+                            <div id="profiles-list" style="padding: 20px;">
+                                <div class="loading active"><div class="spinner"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Categories Section -->
+                    <div id="categories-tab" class="config-tab-content">
+                        <div class="card">
+                            <div class="card-title">Add New Category</div>
+                            
+                            <form id="add-category-form">
+                                <div class="form-group full-width">
+                                    <label for="category-name">Category Name *</label>
+                                    <input type="text" id="category-name" required placeholder="e.g., Electronics">
+                                </div>
+                                
+                                <div class="form-group full-width">
+                                    <label for="category-description">Description</label>
+                                    <textarea id="category-description" placeholder="Category description..." style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;">
+                                    ✓ Add Category
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-title">Existing Categories</div>
+                            <div id="categories-list" style="padding: 20px;">
+                                <div class="loading active"><div class="spinner"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Products Section -->
+                    <div id="products-tab" class="config-tab-content">
+                        <div class="card">
+                            <div class="card-title">Existing Products</div>
+                            <p class="card-subtitle">Manage, edit, or delete products</p>
+                            <div id="products-list" style="padding: 20px;">
+                                <div class="loading active"><div class="spinner"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                Edit Profile
+                <span style="float: right; cursor: pointer; font-size: 22px;" onclick="closeEditProfileModal()">&times;</span>
+            </div>
+            
+            <form id="edit-profile-form" style="padding: 20px;">
+                <input type="hidden" id="edit-profile-id">
+                
+                <div class="form-group">
+                    <label for="edit-profile-name">Name *</label>
+                    <input type="text" id="edit-profile-name" required placeholder="Full name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-profile-email">Email *</label>
+                    <input type="email" id="edit-profile-email" required placeholder="Email address">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-profile-phone">Phone Number</label>
+                    <input type="tel" id="edit-profile-phone" placeholder="Phone number">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-profile-position">Position</label>
+                    <input type="text" id="edit-profile-position" placeholder="e.g., Team Lead">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-profile-working-under">Working Under *</label>
+                    <select id="edit-profile-working-under" required style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                        <option value="">-- Select --</option>
+                        <option value="MV">MV</option>
+                        <option value="HPM">HPM</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-success" style="flex: 1; padding: 10px;">
+                        ✓ Update Profile
+                    </button>
+                    <button type="button" onclick="closeEditProfileModal()" class="btn btn-secondary" style="flex: 1; padding: 10px;">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Return Modal -->
+    <div id="return-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                Return Items - <span id="return-product-name"></span>
+            </div>
+            
+            <form id="return-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Maximum Quantity Available: <span id="return-max-quantity"></span></label>
+                        <input type="hidden" id="return-issue-id">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="return-quantity">Quantity to Return *</label>
+                        <input type="number" id="return-quantity" min="1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="return-condition">Item Condition *</label>
+                        <select id="return-condition" required style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                            <option value="good">Good</option>
+                            <option value="damaged">Damaged</option>
+                            <option value="needs-repair">Needs Repair</option>
+                            <option value="lost">Lost/Missing</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="return-notes">Notes (Optional)</label>
+                        <textarea id="return-notes" placeholder="Add any notes..." style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit;"></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeReturnModal()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Process Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Edit Product Modal -->
+    <div id="edit-product-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                Edit Product
+                <span style="float: right; cursor: pointer; font-size: 22px;" onclick="closeEditProductModal()">&times;</span>
+            </div>
+            
+            <form id="edit-product-form" onsubmit="handleEditProductSubmit(event)" style="padding: 20px;">
+                <input type="hidden" id="edit-product-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-product-name">Product Name *</label>
+                        <input type="text" id="edit-product-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-category">Category *</label>
+                        <select id="edit-product-category" required style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;"></select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="edit-product-location">Location/Storage</label>
+                        <input type="text" id="edit-product-location">
+                    </div>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="edit-product-description">Description</label>
+                    <textarea id="edit-product-description" placeholder="Product description..." style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-product-stock">Reserve Stock (quantity)</label>
+                        <input type="number" id="edit-product-stock" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-in-use">In Circulation (quantity)</label>
+                        <input type="number" id="edit-product-in-use" min="0" value="0">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-success" style="flex: 1;">✓ Save Changes</button>
+                    <button type="button" onclick="closeEditProductModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-update date and time
+        function updateDateTime() {
+            const now = new Date();
+            const date = now.toLocaleDateString('en-IN');
+            const time = now.toLocaleTimeString('en-IN');
+            
+            const dateEl = document.getElementById('auto-date');
+            const timeEl = document.getElementById('auto-time');
+            
+            if (dateEl) dateEl.textContent = date;
+            if (timeEl) timeEl.textContent = time;
+        }
+        
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+    </script>
+    
+    <script src="/js/app.js"></script>
+</body>
+</html>
