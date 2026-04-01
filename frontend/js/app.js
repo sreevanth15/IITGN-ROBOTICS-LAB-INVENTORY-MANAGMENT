@@ -7,6 +7,10 @@ let selectedItems = [];
 let allProducts = [];
 let allProfiles = [];
 let allCategories = [];
+// Inventory UI state
+let inventorySearchTerm = '';
+let inventorySortBy = 'name_asc';
+let inventoryCategoryFilter = 'all';
 
 // === Authentication ===
 async function handleLogin(event) {
@@ -49,7 +53,7 @@ function handleLogout() {
 }
 
 // === Dashboard Initialization ===
-function initializeDashboard() {
+async function initializeDashboard() {
     const userStr = localStorage.getItem('user');
     
     if (!userStr) {
@@ -59,7 +63,8 @@ function initializeDashboard() {
     
     currentUser = JSON.parse(userStr);
     updateUserInfo();
-    loadAllData();
+    await loadAllData();
+    setupInventoryControls();
     setupNavigation();
 }
 
@@ -173,116 +178,123 @@ async function loadProducts() {
 }
 
 function displayInventoryByFolder() {
-    // ===== IN CIRCULATION INVENTORY (Independent) =====
+    // Render inventory lists as flat grids (no folder grouping)
     const inUseContainer = document.getElementById('inventory-in-use');
-    const inUseProducts = allProducts; // Show ALL products in this inventory
-    
+    const extraContainer = document.getElementById('inventory-extra');
+
+    // Prepare In Circulation products (apply category filter)
+    let inUseProducts = allProducts.slice();
+    if (inventoryCategoryFilter && inventoryCategoryFilter !== 'all') {
+        inUseProducts = inUseProducts.filter(p => (p.category || 'Uncategorized') === inventoryCategoryFilter);
+    }
+
+    const search = (inventorySearchTerm || '').toLowerCase();
+
+    inUseProducts.sort((a, b) => {
+        // Prioritize search matches
+        if (search) {
+            const aMatch = (a.product_name || '').toLowerCase().includes(search) ? 0 : 1;
+            const bMatch = (b.product_name || '').toLowerCase().includes(search) ? 0 : 1;
+            if (aMatch !== bMatch) return aMatch - bMatch;
+        }
+
+        switch (inventorySortBy) {
+            case 'name_asc': return (a.product_name || '').localeCompare(b.product_name || '');
+            case 'name_desc': return (b.product_name || '').localeCompare(a.product_name || '');
+            case 'category_asc': return (a.category || '').localeCompare(b.category || '');
+            case 'available_desc': return ( (b.quantity_in_use || 0) - (a.quantity_in_use || 0) );
+            case 'available_asc': return ( (a.quantity_in_use || 0) - (b.quantity_in_use || 0) );
+            default: return 0;
+        }
+    });
+
     let inUseHTML = '';
     if (inUseProducts.length === 0) {
         inUseHTML = '<p class="text-muted">No items</p>';
     } else {
-        // Group by category
-        const inUseCategoryMap = {};
+        inUseHTML = '<div class="inventory-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">';
         inUseProducts.forEach(product => {
-            const category = product.category || 'Uncategorized';
-            if (!inUseCategoryMap[category]) {
-                inUseCategoryMap[category] = [];
-            }
-            inUseCategoryMap[category].push(product);
-        });
-        
-        inUseHTML = '<div class="inventory-categories">';
-        Object.keys(inUseCategoryMap).sort().forEach((category, index) => {
-            const categoryId = `in-use-category-${category.replace(/\s+/g, '-').toLowerCase()}`;
+            const stockQty = product.quantity_in_use || 0;
+            const isOutOfStock = stockQty === 0;
+            const disabledAttr = isOutOfStock ? 'disabled' : '';
+            const dimmedStyle = isOutOfStock ? 'opacity: 0.5;' : '';
+
             inUseHTML += `
-                <div class="category-section">
-                    <div class="category-header" onclick="toggleCategory('${categoryId}', event)">
-                        <span class="category-toggle">▶</span>
-                        <span class="category-name">📁 ${category}</span>
-                        <span class="category-count">(${inUseCategoryMap[category].length} items)</span>
-                    </div>
-                    <div id="${categoryId}" class="category-items" style="display: ${index === 0 ? 'grid' : 'none'}; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
-            `;
-            
-            inUseCategoryMap[category].forEach(product => {
-                const stockQty = product.quantity_in_use || 0;
-                const isOutOfStock = stockQty === 0;
-                const disabledAttr = isOutOfStock ? 'disabled' : '';
-                const dimmedStyle = isOutOfStock ? 'opacity: 0.5;' : '';
-                
-                inUseHTML += `
-                    <div style="padding: 15px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: #fff; ${dimmedStyle}">
+                <div style="padding: 15px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: #fff; ${dimmedStyle}">
+                    <div style="display:flex; gap:8px; align-items:flex-start;">
                         <input type="checkbox" class="checkout-checkbox" value="${product.product_id}" data-name="${product.product_name}" data-category="${product.category}" data-source="in_circulation" data-available="${stockQty}" data-max-quantity="${stockQty}" ${disabledAttr}>
-                        <label style="margin-left: 8px; font-weight: 500; cursor: ${isOutOfStock ? 'default' : 'pointer'};">
-                            ${product.product_name}
-                        </label>
-                        <div style="margin-top: 10px; font-size: 13px; color: #6b7280;">
-                            <div>📁 In Circulation: ${stockQty}</div>
-                            <div style="color: ${isOutOfStock ? '#dc2626' : '#059669'}; font-weight: ${isOutOfStock ? 'bold' : 'normal'};">${isOutOfStock ? '⚠️ Stock: 0' : '✓ In Stock: ' + stockQty}</div>
-                            <div>Location: ${product.location || 'N/A'}</div>
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-weight:600">${product.product_name}</div>
+                                <div style="font-size:12px; color:#6b7280">${product.category || 'Uncategorized'}</div>
+                            </div>
+                                <div style="margin-top:8px; font-size:13px; color:#6b7280;">
+                                <div>📁 In Circulation: ${stockQty}</div>
+                                <div style="color: ${isOutOfStock ? '#dc2626' : '#059669'}; font-weight: ${isOutOfStock ? 'bold' : 'normal'};">${isOutOfStock ? '⚠️ Stock: 0' : '✓ In Stock: ' + stockQty}</div>
+                                <div>Location: ${product.location || 'N/A'}</div>
+                                <div style="margin-top:6px; margin-bottom:8px; font-size:12px; color:#6b7280; display:block;"><strong>Added by:</strong> ${product.added_by || product.added_by_full_name || product.added_by_username || '—'}</div>
+                            </div>
+                            <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                                <input type="number" min="1" value="1" max="${stockQty}" class="checkout-quantity" data-product-id="${product.product_id}" style="width: 84px; padding:8px; border:1px solid #e5e7eb; border-radius:4px;" ${disabledAttr}>
+                                <button type="button" class="btn btn-small" onclick="openProductDetails(${product.product_id})" style="padding:8px;">More details</button>
+                            </div>
                         </div>
-                        <input type="number" min="1" value="1" max="${stockQty}" class="checkout-quantity" data-product-id="${product.product_id}" style="width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 4px;" ${disabledAttr}>
                     </div>
-                `;
-            });
-            
-            inUseHTML += '</div></div>';
+                </div>
+            `;
         });
         inUseHTML += '</div>';
     }
-    
+
     if (inUseContainer) {
         inUseContainer.innerHTML = inUseHTML;
     }
-    
+
     // ===== RESERVE STOCK INVENTORY (VIEW-ONLY) =====
-    // Show only products that have available reserve stock and remove checkout controls
-    const extraContainer = document.getElementById('inventory-extra');
-    const extraProducts = allProducts.filter(p => (p.quantity_in_stock || 0) > 0);
+    let extraProducts = allProducts.filter(p => (p.quantity_in_stock || 0) > 0);
+    if (inventoryCategoryFilter && inventoryCategoryFilter !== 'all') {
+        extraProducts = extraProducts.filter(p => (p.category || 'Uncategorized') === inventoryCategoryFilter);
+    }
+
+    extraProducts.sort((a, b) => {
+        if (search) {
+            const aMatch = (a.product_name || '').toLowerCase().includes(search) ? 0 : 1;
+            const bMatch = (b.product_name || '').toLowerCase().includes(search) ? 0 : 1;
+            if (aMatch !== bMatch) return aMatch - bMatch;
+        }
+
+        switch (inventorySortBy) {
+            case 'name_asc': return (a.product_name || '').localeCompare(b.product_name || '');
+            case 'name_desc': return (b.product_name || '').localeCompare(a.product_name || '');
+            case 'category_asc': return (a.category || '').localeCompare(b.category || '');
+            case 'available_desc': return ( (b.quantity_in_stock || 0) - (a.quantity_in_stock || 0) );
+            case 'available_asc': return ( (a.quantity_in_stock || 0) - (b.quantity_in_stock || 0) );
+            default: return 0;
+        }
+    });
 
     let extraHTML = '';
     if (extraProducts.length === 0) {
         extraHTML = '<p class="text-muted">No items in reserve stock</p>';
     } else {
-        // Group by category
-        const extraCategoryMap = {};
+        extraHTML = '<div class="inventory-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">';
         extraProducts.forEach(product => {
-            const category = product.category || 'Uncategorized';
-            if (!extraCategoryMap[category]) {
-                extraCategoryMap[category] = [];
-            }
-            extraCategoryMap[category].push(product);
-        });
-
-        extraHTML = '<div class="inventory-categories">';
-        Object.keys(extraCategoryMap).sort().forEach((category, index) => {
-            const categoryId = `extra-category-${category.replace(/\s+/g, '-').toLowerCase()}`;
+            const stockQty = product.quantity_in_stock || 0;
             extraHTML += `
-                <div class="category-section">
-                    <div class="category-header" onclick="toggleCategory('${categoryId}', event)">
-                        <span class="category-toggle">▶</span>
-                        <span class="category-name">📁 ${category}</span>
-                        <span class="category-count">(${extraCategoryMap[category].length} items)</span>
+                <div style="padding: 15px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: #fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-weight:600">${product.product_name}</div>
+                        <div style="font-size:12px; color:#6b7280">${product.category || 'Uncategorized'}</div>
                     </div>
-                    <div id="${categoryId}" class="category-items" style="display: ${index === 0 ? 'grid' : 'none'}; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                        <div style="margin-top:6px; font-size:13px; color:#6b7280;">
+                        <div>📁 Reserve Stock: ${stockQty}</div>
+                        <div style="color: #059669; font-weight: normal;">✓ In Stock: ${stockQty}</div>
+                        <div>Location: ${product.location || 'N/A'}</div>
+                        <div style="margin-top:6px; margin-bottom:8px; font-size:12px; color:#6b7280; display:block;"><strong>Added by:</strong> ${product.added_by || product.added_by_full_name || product.added_by_username || '—'}</div>
+                    </div>
+                    <div style="margin-top:10px;"><button type="button" class="btn btn-small" onclick="openProductDetails(${product.product_id})">More details</button></div>
+                </div>
             `;
-
-            extraCategoryMap[category].forEach(product => {
-                const stockQty = product.quantity_in_stock || 0;
-
-                extraHTML += `
-                    <div style="padding: 15px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: #fff;">
-                        <div style="font-weight: 600; margin-bottom: 6px;">${product.product_name}</div>
-                        <div style="margin-top: 6px; font-size: 13px; color: #6b7280;">
-                            <div>📁 Reserve Stock: ${stockQty}</div>
-                            <div style="color: #059669; font-weight: normal;">✓ In Stock: ${stockQty}</div>
-                            <div>Location: ${product.location || 'N/A'}</div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            extraHTML += '</div></div>';
         });
         extraHTML += '</div>';
     }
@@ -290,18 +302,18 @@ function displayInventoryByFolder() {
     if (extraContainer) {
         extraContainer.innerHTML = extraHTML;
     }
-    
-    // Setup checkbox listeners for BOTH inventories
+
+    // Setup checkbox listeners for the in-circulation inventory
     document.querySelectorAll('.checkout-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', updateCheckoutSelection);
     });
-    
-    // Setup quantity input listeners for BOTH inventories
+
+    // Setup quantity input listeners for in-circulation inventory
     document.querySelectorAll('.checkout-quantity').forEach(input => {
         input.addEventListener('change', function() {
             const maxQuantity = parseInt(this.getAttribute('max'));
             const currentValue = parseInt(this.value) || 1;
-            
+
             if (currentValue > maxQuantity) {
                 showError(`Maximum available: ${maxQuantity}`);
                 this.value = maxQuantity;
@@ -311,11 +323,11 @@ function displayInventoryByFolder() {
             }
             updateCheckoutSelection();
         });
-        
+
         input.addEventListener('input', function() {
             const value = parseInt(this.value) || 0;
             if (value < 1) return;
-            
+
             const maxQuantity = parseInt(this.getAttribute('max'));
             if (value > maxQuantity) {
                 this.value = maxQuantity;
@@ -438,6 +450,83 @@ function clearCheckoutSelection() {
     document.getElementById('checkout-section').style.display = 'none';
 }
 
+// Setup inventory top controls: search, sort, category filter
+function setupInventoryControls() {
+    const searchInput = document.getElementById('inventory-search');
+    const searchBtn = document.getElementById('inventory-search-btn');
+    const sortSelect = document.getElementById('inventory-sort');
+    const categoryFilter = document.getElementById('inventory-category-filter');
+
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                inventorySearchTerm = searchInput.value.trim();
+                displayInventoryByFolder();
+            }
+        });
+    }
+
+    if (searchBtn) {
+        searchBtn.addEventListener('click', () => {
+            inventorySearchTerm = (searchInput && searchInput.value) ? searchInput.value.trim() : '';
+            displayInventoryByFolder();
+        });
+    }
+
+    if (sortSelect) {
+        sortSelect.value = inventorySortBy;
+        sortSelect.addEventListener('change', () => {
+            inventorySortBy = sortSelect.value;
+            displayInventoryByFolder();
+        });
+    }
+
+    if (categoryFilter) {
+        categoryFilter.value = inventoryCategoryFilter;
+        categoryFilter.addEventListener('change', () => {
+            inventoryCategoryFilter = categoryFilter.value;
+            displayInventoryByFolder();
+        });
+    }
+
+    // Prefill 'Added by' in Add Product form when available
+    const addedByInput = document.getElementById('new-product-added-by');
+    if (addedByInput) {
+        if (currentUser && currentUser.full_name) addedByInput.value = currentUser.full_name;
+        else if (currentUser && currentUser.username) addedByInput.value = currentUser.username;
+    }
+}
+
+// Product details modal
+function openProductDetails(productId) {
+    const product = allProducts.find(p => p.product_id == productId);
+    if (!product) return;
+    const modal = document.getElementById('product-details-modal');
+    if (!modal) return;
+    const title = document.getElementById('product-details-title');
+    const body = document.getElementById('product-details-body');
+    if (title) title.textContent = product.product_name;
+    if (body) {
+        body.innerHTML = `
+            <div style="font-size:14px; color:#374151;">
+                <div><strong>Category:</strong> ${product.category || 'Uncategorized'}</div>
+                <div><strong>Location:</strong> ${product.location || 'N/A'}</div>
+                <div><strong>In Circulation:</strong> ${product.quantity_in_use || 0}</div>
+                <div><strong>Reserve Stock:</strong> ${product.quantity_in_stock || 0}</div>
+                <div style="margin-top:8px;"><strong>Description:</strong></div>
+                <div style="margin-top:6px; margin-bottom:8px; font-size:12px; color:#6b7280; display:block;"><strong>Added by:</strong> ${product.added_by || product.added_by_full_name || product.added_by_username || '—'}</div>
+                <div style="margin-top:6px; color:#4b5563;">${product.description ? product.description.replace(/\n/g, '<br>') : '<em>No description</em>'}</div>
+            </div>
+        `;
+    }
+    modal.style.display = 'block';
+}
+
+function closeProductDetailsModal() {
+    const modal = document.getElementById('product-details-modal');
+    if (modal) modal.style.display = 'none';
+}
+
 
 
 // === Checkout from Inventory List ===
@@ -496,6 +585,12 @@ async function handleCheckoutSubmit(event) {
     });
     
     try {
+        // Validate purpose is provided
+        const purpose = (document.getElementById('checkout-purpose') ? document.getElementById('checkout-purpose').value.trim() : '');
+        if (!purpose) {
+            showError('Purpose is required');
+            return;
+        }
         const response = await fetch(`${API_URL}/issues`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -507,7 +602,7 @@ async function handleCheckoutSubmit(event) {
                 })),
                 user_name: userName,
                 user_email: userEmail,
-                purpose: document.getElementById('checkout-purpose').value,
+                purpose: purpose,
                 user_id: currentUser.user_id
             })
         });
@@ -749,6 +844,18 @@ function populateCategoryDropdown() {
         option.textContent = category.category_name;
         select.appendChild(option);
     });
+    
+    // Also populate inventory category filter if present
+    const inventoryFilter = document.getElementById('inventory-category-filter');
+    if (inventoryFilter) {
+        inventoryFilter.innerHTML = '<option value="all">All Categories</option>';
+        allCategories.forEach(category => {
+            const opt = document.createElement('option');
+            opt.value = category.category_name;
+            opt.textContent = category.category_name;
+            inventoryFilter.appendChild(opt);
+        });
+    }
 }
 
 function displayCategories() {
@@ -1152,14 +1259,16 @@ function displayInventoryReport(report) {
         return;
     }
     
-    let html = '<table><thead><tr><th>Product ID</th><th>Product Name</th><th>Category</th><th>Reserve Stock</th><th>In Circulation</th><th>Total</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Product ID</th><th>Product Name</th><th>Category</th><th>Added By</th><th>Reserve Stock</th><th>In Circulation</th><th>Total</th></tr></thead><tbody>';
     
     report.forEach(item => {
+        const addedBy = item.added_by || item.added_by_full_name || item.added_by_username || '—';
         html += `
             <tr>
                 <td>#${item.product_id}</td>
                 <td>${item.product_name}</td>
                 <td>${item.category || 'N/A'}</td>
+                <td>${addedBy}</td>
                 <td>${item.quantity_in_stock}</td>
                 <td>${item.quantity_in_use}</td>
                 <td>${item.quantity_total}</td>
@@ -1189,6 +1298,14 @@ async function handleAddProductSubmit(event) {
             quantity_in_use = quantity;
         }
         
+        // Validate 'Added By' is provided
+        const addedByElem = document.getElementById('new-product-added-by');
+        const addedByVal = addedByElem ? (addedByElem.value || '').trim() : '';
+        if (!addedByVal) {
+            showError('Please enter the name of who added this product');
+            return;
+        }
+
         const response = await fetch(`${API_URL}/products`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1199,7 +1316,9 @@ async function handleAddProductSubmit(event) {
                 location: document.getElementById('new-product-location').value,
                 quantity_in_stock: quantity_in_stock,
                 quantity_in_use: quantity_in_use,
-                quantity_total: quantity
+                quantity_total: quantity,
+                user_id: currentUser ? currentUser.user_id : null,
+                added_by: addedByVal
             })
         });
         

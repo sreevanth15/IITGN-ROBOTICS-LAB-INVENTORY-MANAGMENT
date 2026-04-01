@@ -101,6 +101,21 @@ function initializeDatabase() {
                             });
                         }
                     });
+                    // Ensure 'added_by' column exists on products table (to store manual 'Added by' text)
+                    db.all("PRAGMA table_info('products');", (err2, pcols) => {
+                        if (err2) {
+                            logDebug('ERROR: Unable to read products table info: ' + err2.message);
+                            return;
+                        }
+                        const hasAddedBy = pcols && pcols.some(c => c.name === 'added_by');
+                        if (!hasAddedBy) {
+                            logDebug("Applying migration: add 'added_by' column to products table");
+                            db.run("ALTER TABLE products ADD COLUMN added_by TEXT DEFAULT NULL;", (err) => {
+                                if (err) logDebug('ERROR: Failed to add added_by column: ' + err.message);
+                                else logDebug("Migration applied: 'added_by' column added to products");
+                            });
+                        }
+                    });
                 });
             } catch (merr) {
                 logDebug('ERROR: Migration check failed: ' + merr.message);

@@ -71,6 +71,20 @@
                     <div class="page-header">
                         <h1>📦 Inventory List</h1>
                         <p>Select items from folders and checkout directly</p>
+                        <div class="inventory-controls" style="margin-top: 12px; display:flex; gap:10px; align-items:center;">
+                            <input type="search" id="inventory-search" placeholder="Search by product name..." style="flex:1; padding:10px; border:1px solid #e5e7eb; border-radius:6px;">
+                            <button id="inventory-search-btn" class="btn" style="padding:10px;">Search</button>
+                            <select id="inventory-sort" style="padding:10px; border:1px solid #e5e7eb; border-radius:6px;">
+                                <option value="name_asc">Name (A → Z)</option>
+                                <option value="name_desc">Name (Z → A)</option>
+                                <option value="available_desc">Available (High → Low)</option>
+                                <option value="available_asc">Available (Low → High)</option>
+                                <option value="category_asc">Category (A → Z)</option>
+                            </select>
+                            <select id="inventory-category-filter" style="padding:10px; border:1px solid #e5e7eb; border-radius:6px;">
+                                <option value="all">All Categories</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <!-- In Circulation Folder -->
@@ -140,8 +154,8 @@
                             
                             <!-- Additional Info -->
                             <div class="form-group full-width">
-                                <label for="checkout-purpose">Purpose (Optional)</label>
-                                <textarea id="checkout-purpose" placeholder="What will these items be used for?" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                                <label for="checkout-purpose">Purpose *</label>
+                                <textarea id="checkout-purpose" required placeholder="What will these items be used for?" style="width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
                             </div>
                             
                             <!-- Auto-recorded Info -->
@@ -209,6 +223,13 @@
                                 <div class="form-group">
                                     <label for="new-product-location">Location/Storage</label>
                                     <input type="text" id="new-product-location" placeholder="e.g., Shelf A-1, Cabinet 3">
+                                </div>
+                            </div>
+                        
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new-product-added-by">Added By *</label>
+                                    <input type="text" id="new-product-added-by" required placeholder="Name of person who added this">
                                 </div>
                             </div>
                             
@@ -370,6 +391,22 @@
         </div>
     </div>
     
+    <!-- Product Details Modal -->
+    <div id="product-details-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <span id="product-details-title">Product Details</span>
+                <span style="float: right; cursor: pointer; font-size: 22px;" onclick="closeProductDetailsModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="product-details-body" style="padding: 20px;">
+                <!-- Filled dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeProductDetailsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Profile Modal -->
     <div id="edit-profile-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 500px;">

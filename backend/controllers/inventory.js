@@ -57,10 +57,25 @@ exports.login = async (req, res) => {
 exports.getAllProducts = async (req, res) => {
     try {
         const products = await dbPromise.all(`
-            SELECT p.*, 
-                   i.quantity_in_use, 
-                   i.quantity_in_stock,
-                   i.quantity_total
+            SELECT p.*,
+                   COALESCE(i.quantity_in_use, 0) AS quantity_in_use,
+                   COALESCE(i.quantity_in_stock, 0) AS quantity_in_stock,
+                   COALESCE(i.quantity_total, 0) AS quantity_total,
+                       p.added_by,
+                       (
+                           SELECT u.full_name
+                           FROM transaction_history th
+                           JOIN users u ON u.user_id = th.performed_by_user_id
+                           WHERE th.transaction_type = 'PRODUCT_ADD' AND th.reference_id = p.product_id
+                           LIMIT 1
+                       ) AS added_by_full_name,
+                       (
+                           SELECT u.username
+                           FROM transaction_history th
+                           JOIN users u ON u.user_id = th.performed_by_user_id
+                           WHERE th.transaction_type = 'PRODUCT_ADD' AND th.reference_id = p.product_id
+                           LIMIT 1
+                       ) AS added_by_username
             FROM products p
             LEFT JOIN inventory_status i ON p.product_id = i.product_id
             ORDER BY p.product_id DESC
@@ -81,42 +96,43 @@ exports.getAllProducts = async (req, res) => {
 
 exports.addProduct = async (req, res) => {
     try {
-        const { product_name, description, category, location, quantity_in_stock, quantity_in_use, quantity_total } = req.body;
-        
-        if (!product_name || !category) {
+        const { product_name, description, category, location, quantity_in_stock, quantity_in_use, quantity_total, user_id, added_by } = req.body;
+
+        // Require added_by to be provided
+        if (!product_name || !category || !added_by || (typeof added_by === 'string' && added_by.trim() === '')) {
             return res.status(400).json({
                 success: false,
-                message: 'Product name and category are required'
+                message: 'Product name, category and Added By are required'
             });
         }
-        
-        // Insert product
+
+        // Insert product including added_by
         const result = await dbPromise.run(
-            `INSERT INTO products (product_name, description, category, location) 
-             VALUES (?, ?, ?, ?)`,
-            [product_name, description, category, location]
+            `INSERT INTO products (product_name, description, category, location, added_by) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [product_name, description, category, location, added_by]
         );
-        
+
         const product_id = result.id;
-        
+
         // Initialize inventory status with both in_stock and in_use quantities
         const stock = quantity_in_stock || 0;
         const use = quantity_in_use || 0;
         const total = quantity_total || (stock + use);
-        
+
         await dbPromise.run(
             `INSERT INTO inventory_status (product_id, quantity_in_stock, quantity_in_use, quantity_total) 
              VALUES (?, ?, ?, ?)`,
             [product_id, stock, use, total]
         );
 
-        // Log transaction: product added
+        // Log transaction: product added (record who added)
         await dbPromise.run(
             `INSERT INTO transaction_history (transaction_type, product_id, quantity_change, performed_by_user_id, reference_id, reference_type, notes)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            ['PRODUCT_ADD', product_id, stock, null, product_id, 'PRODUCT', `Product added: ${product_name}`]
+            ['PRODUCT_ADD', product_id, stock, user_id || null, product_id, 'PRODUCT', `Product added: ${product_name}`]
         );
-        
+
         res.json({
             success: true,
             message: 'Product added successfully',
@@ -133,7 +149,7 @@ exports.addProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
     try {
-        const { product_id, product_name, description, category, location, quantity_in_stock, quantity_in_use } = req.body;
+        const { product_id, product_name, description, category, location, quantity_in_stock, quantity_in_use, quantity_total } = req.body;
         
         if (!product_id || !product_name || !category) {
             return res.status(400).json({
@@ -151,20 +167,22 @@ exports.updateProduct = async (req, res) => {
         
         // Update inventory quantities if provided
         if (quantity_in_stock !== undefined || quantity_in_use !== undefined) {
-            // Get current inventory status first
+            // Get current inventory status first (including total)
             const currentInventory = await dbPromise.get(
-                'SELECT quantity_in_stock, quantity_in_use FROM inventory_status WHERE product_id = ?',
+                'SELECT quantity_in_stock, quantity_in_use, quantity_total FROM inventory_status WHERE product_id = ?',
                 [product_id]
             );
 
             // Old values for delta calculation
             const oldStock = currentInventory ? (currentInventory.quantity_in_stock || 0) : 0;
             const oldUse = currentInventory ? (currentInventory.quantity_in_use || 0) : 0;
+            const oldTotal = currentInventory ? (currentInventory.quantity_total || 0) : 0;
             
             // Use provided values or keep current values
             const stockVal = quantity_in_stock !== undefined ? quantity_in_stock : oldStock;
             const useVal = quantity_in_use !== undefined ? quantity_in_use : oldUse;
-            const totalVal = stockVal + useVal;
+            // Preserve existing quantity_total unless explicitly provided; when creating new record derive from stock+use
+            const totalVal = quantity_total !== undefined ? quantity_total : (currentInventory ? oldTotal : (stockVal + useVal));
             
             // Update or create inventory_status if it doesn't exist
             if (currentInventory) {
@@ -197,6 +215,14 @@ exports.updateProduct = async (req, res) => {
                     `INSERT INTO transaction_history (transaction_type, product_id, quantity_change, performed_by_user_id, reference_id, reference_type, notes)
                      VALUES (?, ?, ?, ?, ?, ?, ?)`,
                     ['PRODUCT_UPDATE_USE', product_id, deltaUse, null, product_id, 'PRODUCT', `In-use changed: ${oldUse} -> ${useVal}`]
+                );
+            }
+            const deltaTotal = totalVal - oldTotal;
+            if (deltaTotal !== 0) {
+                await dbPromise.run(
+                    `INSERT INTO transaction_history (transaction_type, product_id, quantity_change, performed_by_user_id, reference_id, reference_type, notes)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    ['PRODUCT_UPDATE_TOTAL', product_id, deltaTotal, null, product_id, 'PRODUCT', `Total changed: ${oldTotal} -> ${totalVal}`]
                 );
             }
         }
@@ -273,6 +299,14 @@ exports.issueItem = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'User name and email are required'
+            });
+        }
+
+        // Require purpose for issuing items
+        if (!purpose || (typeof purpose === 'string' && purpose.trim() === '')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Purpose is required when issuing items'
             });
         }
         
@@ -356,11 +390,7 @@ exports.issueItem = async (req, res) => {
                 );
             }
 
-            // Sync quantity_total
-            await dbPromise.run(
-                `UPDATE inventory_status SET quantity_total = COALESCE(quantity_in_stock,0) + COALESCE(quantity_in_use,0) WHERE product_id = ?`,
-                [product_id]
-            );
+            // NOTE: Do not modify quantity_total on checkout — it represents the lab's owned total
 
             // Log transaction
             const sourceLabel = source === 'in_circulation' ? 'In Circulation' : 'Reserve Stock';
@@ -465,11 +495,7 @@ exports.returnItem = async (req, res) => {
                 );
             }
 
-            // Sync quantity_total
-            await dbPromise.run(
-                `UPDATE inventory_status SET quantity_total = COALESCE(quantity_in_stock,0) + COALESCE(quantity_in_use,0) WHERE product_id = ?`,
-                [issue.product_id]
-            );
+            // NOTE: Do not modify quantity_total on return — quantity_total is the lab's owned total
 
             // Determine new returned total and set issue status accordingly
             const newReturnedTotal = prevReturned + quantity_returned;
@@ -539,7 +565,22 @@ exports.getInventoryReport = async (req, res) => {
             SELECT p.product_id, p.product_name, p.category,
                    COALESCE(i.quantity_in_use, 0) as quantity_in_use,
                    COALESCE(i.quantity_in_stock, 0) as quantity_in_stock,
-                   COALESCE(i.quantity_total, 0) as quantity_total
+                   COALESCE(i.quantity_total, 0) as quantity_total,
+                   p.added_by,
+                   (
+                       SELECT u.full_name
+                       FROM transaction_history th
+                       JOIN users u ON u.user_id = th.performed_by_user_id
+                       WHERE th.transaction_type = 'PRODUCT_ADD' AND th.reference_id = p.product_id
+                       LIMIT 1
+                   ) AS added_by_full_name,
+                   (
+                       SELECT u.username
+                       FROM transaction_history th
+                       JOIN users u ON u.user_id = th.performed_by_user_id
+                       WHERE th.transaction_type = 'PRODUCT_ADD' AND th.reference_id = p.product_id
+                       LIMIT 1
+                   ) AS added_by_username
             FROM products p
             LEFT JOIN inventory_status i ON p.product_id = i.product_id
             ORDER BY p.category, p.product_name
@@ -561,13 +602,30 @@ exports.getInventoryReport = async (req, res) => {
 // Activity / Transaction report
 exports.getActivityReport = async (req, res) => {
     try {
+        // Prefer showing the profile name (issue.user_name) for CHECKOUT/RETURN records
+        // instead of the processing user's account (admin). Fall back to users.username.
         const activities = await dbPromise.all(`
-            SELECT th.transaction_id, th.transaction_type, th.product_id, p.product_name,
-                   th.quantity_change, th.performed_by_user_id, u.username as performed_by,
-                   th.reference_id, th.reference_type, th.notes, th.created_at
+            SELECT th.transaction_id,
+                   th.transaction_type,
+                   th.product_id,
+                   p.product_name,
+                   th.quantity_change,
+                   th.performed_by_user_id,
+                   COALESCE(
+                       (CASE WHEN th.reference_type = 'CHECKOUT' THEN iss.user_name END),
+                       (CASE WHEN th.reference_type = 'RETURN' THEN iss_ret.user_name END),
+                       u.username
+                   ) AS performed_by,
+                   th.reference_id,
+                   th.reference_type,
+                   th.notes,
+                   th.created_at
             FROM transaction_history th
             LEFT JOIN products p ON p.product_id = th.product_id
             LEFT JOIN users u ON u.user_id = th.performed_by_user_id
+            LEFT JOIN issues iss ON th.reference_type = 'CHECKOUT' AND iss.issue_id = th.reference_id
+            LEFT JOIN returns ret ON th.reference_type = 'RETURN' AND ret.return_id = th.reference_id
+            LEFT JOIN issues iss_ret ON ret.issue_id = iss_ret.issue_id
             ORDER BY th.created_at DESC
         `);
 
